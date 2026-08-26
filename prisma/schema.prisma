@@ -1,0 +1,365 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  PATIENT
+}
+
+enum DoctorStatus {
+  PENDING
+  AVAILABLE
+  UNAVAILABLE
+  REJECTED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum TransactionType {
+  TOP_UP
+  TRANSFER
+  SUBSCRIPTION
+  WITHDRAWAL
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id        Int     @id @default(autoincrement())
+  firstName String?
+  lastName  String?
+  email     String  @unique
+  password  String
+  phone     String?
+  address   String?
+  role      Role    @default(PATIENT)
+
+  resetToken        String?
+  resetTokenExpires DateTime?
+
+  resetOtp        String?
+  resetOtpExpires DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient       Patient?
+  doctor        Doctor?
+  wallet        Wallet?
+  transactions  Transaction[]
+  cards         Card[]
+  notifications Notification[]
+
+  credentials          Credential[]   @relation("UserCredentials")
+  patientConversations Conversation[] @relation("PatientConversations")
+  doctorConversations  Conversation[] @relation("DoctorConversations")
+
+  sentMessages Message[] @relation("SentMessages")
+
+  doctorCaseNotes  CaseNote[] @relation("DoctorCaseNotes")
+  patientCaseNotes CaseNote[] @relation("PatientCaseNotes")
+}
+
+model Patient {
+  id Int @id @default(autoincrement())
+
+  userId Int @unique
+
+  user User @relation(fields: [userId], references: [id])
+
+  gender String?
+
+  dob DateTime?
+
+  nationality String?
+
+  state String?
+
+  address String?
+
+  bvn String?
+
+  bvnVerified Boolean @default(false)
+
+  bookings Booking[]
+}
+
+model Doctor {
+  id Int @id @default(autoincrement())
+
+  userId Int @unique
+
+  user User @relation(fields: [userId], references: [id])
+
+  specialtyId Int
+
+  specialty Specialty @relation(fields: [specialtyId], references: [id])
+
+  hospitalId Int?
+
+  experience Int?
+
+  qualification String?
+
+  bio String?
+
+  status DoctorStatus @default(PENDING)
+
+  bookings Booking[]
+
+  registration RegistrationRequest?
+}
+
+model Specialty {
+  id Int @id @default(autoincrement())
+
+  name String @unique
+
+  doctors Doctor[]
+}
+
+model RegistrationRequest {
+  id Int @id @default(autoincrement())
+
+  doctorId Int @unique
+
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+
+  licenseNumber String
+
+  certificate String
+
+  status RequestStatus @default(PENDING)
+
+  adminComment String?
+
+  createdAt DateTime @default(now())
+
+  processedAt DateTime?
+}
+
+model Wallet {
+  id Int @id @default(autoincrement())
+
+  userId Int @unique
+
+  user User @relation(fields: [userId], references: [id])
+
+  balance Float @default(0)
+
+  currency String @default("NGN")
+
+  isActive Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id Int @id @default(autoincrement())
+
+  userId Int
+
+  user User @relation(fields: [userId], references: [id])
+
+  type TransactionType
+
+  amount Float
+
+  status TransactionStatus
+
+  reference String @unique
+
+  createdAt DateTime @default(now())
+}
+
+model Card {
+  id Int @id @default(autoincrement())
+
+  userId Int
+
+  user User @relation(fields: [userId], references: [id])
+
+  brand String
+
+  last4 String
+
+  expMonth Int
+
+  expYear Int
+
+  authorizationCode String?
+
+  isDefault Boolean @default(false)
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+
+  userId Int
+
+  user User @relation(fields: [userId], references: [id])
+
+  title String
+
+  message String
+
+  type String?
+
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+enum CredentialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Credential {
+  id         Int              @id @default(autoincrement())
+  userId     Int
+  type       String // e.g., "BVN", "NATIONAL_ID", "PASSPORT", "PROOF_OF_ADDRESS"
+  fileUrl    String? // File path/URL for uploaded images/documents (optional for BVN text)
+  fileName   String? // Original file name if uploaded
+  value      String? // Text value like the BVN number or Home Address text
+  status     CredentialStatus @default(PENDING)
+  reviewedBy Int? // Admin user ID who reviewed it
+  reviewNote String? // Rejection or approval notes from admin
+  uploadedAt DateTime         @default(now())
+  reviewedAt DateTime?
+
+  user User @relation("UserCredentials", fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+enum ConversationStatus {
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  AUDIO
+  SYSTEM
+}
+
+model Booking {
+  id          Int           @id @default(autoincrement())
+  patientId   Int
+  doctorId    Int
+  patient     Patient       @relation(fields: [patientId], references: [id])
+  doctor      Doctor        @relation(fields: [doctorId], references: [id])
+  bookingDate DateTime
+  status      BookingStatus @default(PENDING)
+  note        String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  conversation Conversation?
+}
+
+model Conversation {
+  id        Int                @id @default(autoincrement())
+  patientId Int
+  doctorId  Int
+  bookingId Int?               @unique
+  status    ConversationStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  patient User     @relation("PatientConversations", fields: [patientId], references: [id])
+  doctor  User     @relation("DoctorConversations", fields: [doctorId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  messages  Message[]
+  caseNotes CaseNote[]
+
+  @@index([patientId])
+  @@index([doctorId])
+}
+
+model Message {
+  id             Int         @id @default(autoincrement())
+  conversationId Int
+  senderId       Int
+  type           MessageType @default(TEXT)
+  content        String?     @db.Text
+  isRead         Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id])
+
+  attachments MessageAttachment[]
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model MessageAttachment {
+  id        Int      @id @default(autoincrement())
+  messageId Int
+  fileName  String
+  fileUrl   String
+  mimeType  String
+  fileSize  Int?
+  duration  Int?
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model CaseNote {
+  id             Int      @id @default(autoincrement())
+  conversationId Int
+  doctorId       Int
+  patientId      Int
+  content        String   @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  doctor       User         @relation("DoctorCaseNotes", fields: [doctorId], references: [id])
+  patient      User         @relation("PatientCaseNotes", fields: [patientId], references: [id])
+
+  @@index([conversationId])
+  @@index([doctorId])
+  @@index([patientId])
+}
