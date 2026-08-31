@@ -6,7 +6,7 @@ const {
     getAdminDashboard,
     getDoctorDashboard,
     getPatientDashboard
-} = require("../controllers/dashboardController");
+} = require("../controller/dashboardcontroller");
 
 const verifyToken = require("../middleware/verifyToken");
 const authorize = require("../middleware/authorize");
