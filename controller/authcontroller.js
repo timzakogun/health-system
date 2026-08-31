@@ -256,14 +256,173 @@ const register = async (req, res) => {
     |--------------------------------------------------------------------------
     */
 
+    // const result = await prisma.$transaction(async (tx) => {
+
+    //   /*
+    //   |--------------------------------------------------------------------------
+    //   | CREATE USER
+    //   |--------------------------------------------------------------------------
+    //   */
+
+    //   const user = await tx.user.create({
+    //     data: {
+    //       firstName,
+    //       lastName,
+    //       email,
+    //       password: hashedPassword,
+    //       phone,
+    //       role,
+    //     },
+    //   });
+
+    //   /*
+    //   |--------------------------------------------------------------------------
+    //   | CREATE WALLET
+    //   |--------------------------------------------------------------------------
+    //   |
+    //   | Every registered user gets a wallet.
+    //   |
+    //   */
+
+    //   const wallet = await tx.wallet.create({
+    //     data: {
+    //       userId: user.id,
+    //       balance: 0,
+    //       currency: "NGN",
+    //     },
+    //   });
+
+    //   /*
+    //   |--------------------------------------------------------------------------
+    //   | PATIENT REGISTRATION
+    //   |--------------------------------------------------------------------------
+    //   */
+
+    //   if (role === "PATIENT") {
+
+    //     const patient = await tx.patient.create({
+    //       data: {
+    //         userId: user.id,
+    //         gender,
+    //         dob: dob ? new Date(dob) : null,
+    //         nationality,
+    //         state,
+    //         address,
+    //         bvn,
+    //       },
+    //     });
+
+    //     return {
+    //       user,
+    //       patient,
+    //       wallet,
+    //     };
+    //   }
+
+    //   /*
+    //   |--------------------------------------------------------------------------
+    //   | DOCTOR VALIDATION
+    //   |--------------------------------------------------------------------------
+    //   */
+
+    //   if (!specialtyId) {
+    //     const error = new Error(
+    //       "Specialty is required for doctor registration."
+    //     );
+
+    //     error.statusCode = 400;
+
+    //     throw error;
+    //   }
+
+    //   if (!licenseNumber) {
+    //     const error = new Error(
+    //       "License number is required for doctor registration."
+    //     );
+
+    //     error.statusCode = 400;
+
+    //     throw error;
+    //   }
+
+    //   if (!certificate) {
+    //     const error = new Error(
+    //       "Certificate is required for doctor registration."
+    //     );
+
+    //     error.statusCode = 400;
+
+    //     throw error;
+    //   }
+
+    //   /*
+    //   |--------------------------------------------------------------------------
+    //   | FIND SPECIALTY
+    //   |--------------------------------------------------------------------------
+    //   */
+
+    //   const specialty = await tx.specialty.findUnique({
+    //     where: {
+    //       id: Number(specialtyId),
+    //     },
+    //   });
+
+    //   if (!specialty) {
+    //     const error = new Error(
+    //       "Specialty not found."
+    //     );
+
+    //     error.statusCode = 404;
+
+    //     throw error;
+    //   }
+
+    //   /*
+    //   |--------------------------------------------------------------------------
+    //   | CREATE DOCTOR
+    //   |--------------------------------------------------------------------------
+    //   */
+
+    //   const doctor = await tx.doctor.create({
+    //     data: {
+    //       userId: user.id,
+    //       specialtyId: Number(specialtyId),
+    //       experience: experience
+    //         ? Number(experience)
+    //         : null,
+    //       qualification,
+    //       bio,
+    //       status: "PENDING",
+    //     },
+    //   });
+
+    //   /*
+    //   |--------------------------------------------------------------------------
+    //   | CREATE REGISTRATION REQUEST
+    //   |--------------------------------------------------------------------------
+    //   */
+
+    //   const request =
+    //     await tx.registrationRequest.create({
+    //       data: {
+    //         doctorId: doctor.id,
+    //         licenseNumber,
+    //         certificate,
+    //         status: "PENDING",
+    //       },
+    //     });
+
+    //   return {
+    //     user,
+    //     doctor,
+    //     request,
+    //     wallet,
+    //   };
+    // });
+
+
     const result = await prisma.$transaction(async (tx) => {
-
-      /*
-      |--------------------------------------------------------------------------
-      | CREATE USER
-      |--------------------------------------------------------------------------
-      */
-
+      // Create user and patient simultaneously using Prisma's relation syntax
       const user = await tx.user.create({
         data: {
           firstName,
@@ -272,154 +431,51 @@ const register = async (req, res) => {
           password: hashedPassword,
           phone,
           role,
-        },
-      });
-
-      /*
-      |--------------------------------------------------------------------------
-      | CREATE WALLET
-      |--------------------------------------------------------------------------
-      |
-      | Every registered user gets a wallet.
-      |
-      */
-
-      const wallet = await tx.wallet.create({
-        data: {
-          userId: user.id,
-          balance: 0,
-          currency: "NGN",
-        },
-      });
-
-      /*
-      |--------------------------------------------------------------------------
-      | PATIENT REGISTRATION
-      |--------------------------------------------------------------------------
-      */
-
-      if (role === "PATIENT") {
-
-        const patient = await tx.patient.create({
-          data: {
-            userId: user.id,
-            gender,
-            dob: dob ? new Date(dob) : null,
-            nationality,
-            state,
-            address,
-            bvn,
+          wallet: {
+            create: {
+              balance: 0,
+              currency: "NGN",
+            },
           },
-        });
+          patient: role === "PATIENT" ? {
+            create: {
+              gender,
+              dob: dob ? new Date(dob) : null,
+              nationality,
+              state,
+              address,
+              bvn,
+            },
+          } : undefined,
 
-        return {
-          user,
-          patient,
-          wallet,
-        };
-      }
-
-      /*
-      |--------------------------------------------------------------------------
-      | DOCTOR VALIDATION
-      |--------------------------------------------------------------------------
-      */
-
-      if (!specialtyId) {
-        const error = new Error(
-          "Specialty is required for doctor registration."
-        );
-
-        error.statusCode = 400;
-
-        throw error;
-      }
-
-      if (!licenseNumber) {
-        const error = new Error(
-          "License number is required for doctor registration."
-        );
-
-        error.statusCode = 400;
-
-        throw error;
-      }
-
-      if (!certificate) {
-        const error = new Error(
-          "Certificate is required for doctor registration."
-        );
-
-        error.statusCode = 400;
-
-        throw error;
-      }
-
-      /*
-      |--------------------------------------------------------------------------
-      | FIND SPECIALTY
-      |--------------------------------------------------------------------------
-      */
-
-      const specialty = await tx.specialty.findUnique({
-        where: {
-          id: Number(specialtyId),
+          doctor: role === "DOCTOR" ? {
+            create: {
+              specialtyId: Number(specialtyId),
+              experience: experience ? Number(experience) : null,
+              qualification,
+              bio,
+              status: "PENDING",
+              registration: {
+                create: {
+                  licenseNumber,
+                  certificate,
+                  status: "PENDING",
+                },
+              },
+            },
+          } : undefined,
         },
-      });
-
-      if (!specialty) {
-        const error = new Error(
-          "Specialty not found."
-        );
-
-        error.statusCode = 404;
-
-        throw error;
-      }
-
-      /*
-      |--------------------------------------------------------------------------
-      | CREATE DOCTOR
-      |--------------------------------------------------------------------------
-      */
-
-      const doctor = await tx.doctor.create({
-        data: {
-          userId: user.id,
-          specialtyId: Number(specialtyId),
-          experience: experience
-            ? Number(experience)
-            : null,
-          qualification,
-          bio,
-          status: "PENDING",
-        },
-      });
-
-      /*
-      |--------------------------------------------------------------------------
-      | CREATE REGISTRATION REQUEST
-      |--------------------------------------------------------------------------
-      */
-
-      const request =
-        await tx.registrationRequest.create({
-          data: {
-            doctorId: doctor.id,
-            licenseNumber,
-            certificate,
-            status: "PENDING",
+        include: {
+          patient: true,
+          doctor: {
+            include: { registration: true },
           },
-        });
+          wallet: true,
+        },
+      });
 
-      return {
-        user,
-        doctor,
-        request,
-        wallet,
-      };
+      return user;
     });
-
     /*
     |--------------------------------------------------------------------------
     | RESPONSE

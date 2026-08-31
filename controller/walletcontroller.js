@@ -40,7 +40,7 @@ const topUpWallet = async (req, res) => {
             const transaction = await tx.transaction.create({
                 data: {
                     userId,
-                    type: "WALLET_TOPUP",
+                    type: "TOP_UP", // ✅ Fixed: Matches enum TransactionType.TOP_UP
                     amount: Number(amount),
                     status: "SUCCESS",
                     reference
