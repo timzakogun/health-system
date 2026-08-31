@@ -8,7 +8,7 @@ const authorize = require("../middleware/authorize");
 const {
   getDoctors,
   getDoctorById,
-} = require("../controller/doctorController");
+} = require("../controller/doctorcontroller");
 
 
 // Patients can see available doctors
