@@ -9,7 +9,8 @@ const credentialRoutes = require('./routes/credentialRoutes')
 const profileRoutes = require('./routes/profileRoutes')
 
 let app = express();
-const port = 4000;
+// const port = 4000;
+const port = process.env.PORT || 4000;
 app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);

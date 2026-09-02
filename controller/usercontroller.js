@@ -699,3 +699,4 @@ module.exports = {
     updatePassword,
     getMyProfile
 };
+
